@@ -1,9 +1,10 @@
+import argparse
+import os
 import socket
-from dataclasses import field, dataclass
 import threading
+from dataclasses import dataclass, field
+from typing import Union
 
-
-CRLF = "\r\n"
 
 @dataclass
 class HttpRequest:
@@ -11,7 +12,8 @@ class HttpRequest:
     path: str = None
     version: str = None
     headers: dict[str, str] = field(default_factory=dict)
-    body: str = None
+    body: Union[str, bytes] = ""
+
 
 @dataclass
 class HttpResponse:
@@ -29,19 +31,17 @@ class HttpResponse:
         """
         Encodes the HttpResponse object into bytes suitable for sending over TCP.
         """
-        response_line: str = (
-            f"{self.version} {self.status_code} {self.message}\r\n"
-        )
-
-        bBody = self.body.encode("utf-8") if self.body else b""
+        response_line: str = f"{self.version} {self.status_code} {self.message}\r\n"
+        if isinstance(self.body, bytes):
+            bBody: bytes = self.body
+        else:
+            bBody: bytes = self.body.encode("utf-8") if self.body else b""
 
         if bBody and "Content-Length" not in self.headers:
             self.set_header("Content-Length", len(bBody))
-        
-        headers = "".join(
-            f"{key}: {value}\r\n" for key, value in self.headers.items()
-        )
-        
+
+        headers = "".join(f"{key}: {value}\r\n" for key, value in self.headers.items())
+
         headers_end: str = "\r\n"
 
         response: bytes = (response_line + headers + headers_end).encode(
@@ -51,8 +51,28 @@ class HttpResponse:
         return response
 
 
-def handle_client(client_socket: socket.socket, client_address: str, buffer_size: int = 128) -> None:
-    
+def handle_file_request(request: HttpRequest, dir: str) -> HttpResponse:
+    filename: str = request.path.split("/")[-1]
+    file_path: str = os.path.join(dir, filename)
+
+    if not os.path.exists(file_path):
+        return HttpResponse(status_code=404, message="Not found")
+
+    with open("file_path", "rb") as file:
+        data: bytes = file.read()
+
+    return HttpResponse(status_code=200, message="OK", body=data).set_header(
+        "Content-Type", "application/octet-stream"
+    )
+
+
+def handle_client(
+    client_socket: socket.socket,
+    client_address: str,
+    buffer_size: int = 128,
+    directory: str = None,
+) -> None:
+
     print(f"Client connected on {client_address} ...")
     buffer: str = ""
     headers_end: bool = False
@@ -68,8 +88,10 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
             buffer += data
             log_str: str = buffer.replace("\\r\\n", "\\\\r\\\\n")
             print(f"Buffer right now: {log_str}")
-            if (not headers_end and "\r\n\r\n" in buffer):  # end of headers is a an empty line
-              
+            if (
+                not headers_end and "\r\n\r\n" in buffer
+            ):  # end of headers is a an empty line
+
                 # fmt: off
                 headers_part, buffer = buffer.split("\r\n\r\n", 1)
                 # fmt: on
@@ -110,6 +132,8 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
             message="OK",
             body=text,
         ).set_header("Content-Type", "text/plain")
+    elif request.path.startswith("/files"):
+        response = handle_file_request(request, directory)
     else:
         response = HttpResponse(status_code=404, message="Not found")
 
@@ -119,6 +143,9 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--directory", help="directory", type=str)
+    args = parser.parse_args()
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     server_socket.listen()
     threads = []
@@ -128,7 +155,7 @@ def main():
             client_socket, client_address = server_socket.accept()  # wait for client
             client_thread = threading.Thread(
                 target=handle_client,
-                args=(client_socket, client_address, 1024),
+                args=(client_socket, client_address, 1024, args.directory),
             )
             client_thread.daemon = True
             client_thread.start()
@@ -139,6 +166,6 @@ def main():
             thread.join()  # Wait for all client threads to finish
         print("Server has been gracefully shutdown.")
 
+
 if __name__ == "__main__":
     main()
-            
