@@ -58,7 +58,7 @@ def handle_file_request(request: HttpRequest, dir: str) -> HttpResponse:
     if not os.path.exists(file_path):
         return HttpResponse(status_code=404, message="Not found")
 
-    with open("file_path", "rb") as file:
+    with open(file_path, "rb") as file:
         data: bytes = file.read()
 
     return HttpResponse(status_code=200, message="OK", body=data).set_header(
