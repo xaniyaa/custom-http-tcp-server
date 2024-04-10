@@ -72,7 +72,7 @@ def handle_post_file_request(request: HttpRequest, dir: str) -> HttpResponse:
     with open(file_path, "wb") as file:
         file.write(request.body.encode())
 
-    return HttpResponse(status_code=201,reason_phrase="Created",)
+    return HttpResponse(status_code=201,message="Created",)
 
 
 
