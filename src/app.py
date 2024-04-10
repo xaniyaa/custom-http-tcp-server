@@ -1,79 +1,11 @@
 import argparse
-import os
+
 import socket
 import threading
-from dataclasses import dataclass, field
-from typing import Union
 
 
-@dataclass
-class HttpRequest:
-    method: str = None
-    path: str = None
-    version: str = None
-    headers: dict[str, str] = field(default_factory=dict)
-    body: Union[str, bytes] = ""
-
-
-@dataclass
-class HttpResponse:
-    version: str = "HTTP/1.1"
-    status_code: int = 200
-    message: str = "OK"
-    headers: dict[str, str] = field(default_factory=dict)
-    body: Union[str, bytes] = None
-
-    def set_header(self, key: str, value: str):
-        self.headers[key] = value
-        return self
-
-    def encode(self) -> bytes:
-        """
-        Encodes the HttpResponse object into bytes suitable for sending over TCP.
-        """
-        response_line: str = f"{self.version} {self.status_code} {self.message}\r\n"
-        if isinstance(self.body, bytes):
-            bBody: bytes = self.body
-        else:
-            bBody: bytes = self.body.encode("utf-8") if self.body else b""
-
-        if bBody and "Content-Length" not in self.headers:
-            self.set_header("Content-Length", len(bBody))
-
-        headers = "".join(f"{key}: {value}\r\n" for key, value in self.headers.items())
-
-        headers_end: str = "\r\n"
-
-        response: bytes = (response_line + headers + headers_end).encode(
-            "utf-8"
-        ) + bBody
-
-        return response
-
-
-def handle_get_file_request(request: HttpRequest, dir: str) -> HttpResponse:
-    filename: str = request.path.split("/")[-1]
-    file_path: str = os.path.join(dir, filename)
-
-    if not os.path.exists(file_path):
-        return HttpResponse(status_code=404, message="Not found")
-
-    with open(file_path, "rb") as file:
-        data: bytes = file.read()
-
-    return HttpResponse(status_code=200, message="OK", body=data).set_header(
-        "Content-Type", "application/octet-stream"
-    )
-
-def handle_post_file_request(request: HttpRequest, dir: str) -> HttpResponse:
-    filename: str = request.path.split("/", 2)[-1]
-    file_path: str = os.path.join(dir, filename)
-
-    with open(file_path, "wb") as file:
-        file.write(request.body.encode())
-
-    return HttpResponse(status_code=201,message="Created",)
-
+from src.helpers.http_classes import HttpResponse, HttpRequest
+from src.helpers.file_request_handler import handle_get_file_request, handle_post_file_request
 
 
 def handle_client(
@@ -113,6 +45,7 @@ def handle_client(
                     request.headers[key.strip()] = value.strip()
                     if key.lower() == "content-length":
                         content_length = int(value.strip())
+                
                 print("Finished parsing all request headers ...")
             if not headers_end:
                 continue
@@ -160,7 +93,7 @@ def main():
     args = parser.parse_args()
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     server_socket.listen()
-    threads = []
+    threads: list = []
     print(f"[+] Server started with port {4221}...")
     try:
         while True:
