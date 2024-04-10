@@ -93,17 +93,22 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
             print(f"Error with {client_address}: {e}")
             break
     print(f"Received request: {request} ...")
-    if "/" == request.path:
-        response = HttpResponse(status_code=200, message="OK")
-    elif request.path.startswith("/echo"):
-        text: str = request.path.split("/", 2)[-1]
-        response = HttpResponse(
-            status_code=200,
-            message="OK",
-            body=text,
-        ).set_header("Content-Type", "text/plain")
-    else:
-        response = HttpResponse(status_code=404, message="Not found")
+
+    user_agent = request.headers["User-Agent"]
+    response = HttpResponse(status_code=200,
+                           message="OK",
+                           body=user_agent)
+    # if "/" == request.path:
+    #     response = HttpResponse(status_code=200, message="OK")
+    # elif request.path.startswith("/echo"):
+    #     text: str = request.path.split("/", 2)[-1]
+    #     response = HttpResponse(
+    #         status_code=200,
+    #         message="OK",
+    #         body=text,
+    #     ).set_header("Content-Type", "text/plain")
+    # else:
+    #     response = HttpResponse(status_code=404, message="Not found")
 
     print(f"Will response with {response}")
     client_socket.send(response.encode())
