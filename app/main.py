@@ -30,7 +30,7 @@ class HttpResponse:
         Encodes the HttpResponse object into bytes suitable for sending over TCP.
         """
         response_line: str = (
-            f"{self.version} {self.status_code} {self.message}"
+            f"{self.version} {self.status_code} {self.message}\r\n"
         )
 
         bBody = self.body.encode("utf-8") if self.body else b""
@@ -39,16 +39,19 @@ class HttpResponse:
             self.set_header("Content-Length", len(bBody))
         
         headers = "".join(
-            f"{key}: {value}\r\n" for key, value in self.headers
+            f"{key}: {value}\r\n" for key, value in self.headers.items()
         )
+        
+        headers_end: str = "\r\n"
 
-        response: bytes = (response_line + headers + "\r\n").encode(
+        response: bytes = (response_line + headers + headers_end).encode(
             "utf-8"
         ) + bBody
 
         return response
 
-def handle_client(client_socket: socket.socket, client_address: str, buffer_size: int = 128,) -> None:
+
+def handle_client(client_socket: socket.socket, client_address: str, buffer_size: int = 128) -> None:
     
     print(f"Client connected on {client_address} ...")
     buffer: str = ""
@@ -92,7 +95,6 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
     print(f"Received request: {request} ...")
     if "/" == request.path:
         response = HttpResponse(status_code=200, message="OK")
-
     elif request.path.startswith("/echo"):
         text: str = request.path.split("/", 2)[-1]
         response = HttpResponse(
@@ -101,10 +103,12 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
             body=text,
         ).set_header("Content-Type", "text/plain")
     else:
-        response = HttpResponse(status_code=404, message="NOT FOUND")
+        response = HttpResponse(status_code=404, message="Not found")
+
     print(f"Will response with {response}")
     client_socket.send(response.encode())
     client_socket.close()
+
 
 def main():
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
@@ -130,14 +134,3 @@ def main():
 if __name__ == "__main__":
     main()
             
-
-
-def extract_headers(header_string: str) -> str:
-    header_lines = header_string.split("\r\n")
-    start_line = header_lines[0].split(" ")
-    method, path, version = start_line
-    return path
-
-
-if __name__ == "__main__":
-    main()
