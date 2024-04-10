@@ -91,17 +91,17 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
             break
     print(f"Received request: {request} ...")
     if "/" == request.path:
-        response = HttpResponse(status_code=200, reason_phrase="OK")
+        response = HttpResponse(status_code=200, message="OK")
 
     elif request.path.startswith("/echo"):
         text: str = request.path.split("/", 2)[-1]
         response = HttpResponse(
             status_code=200,
-            reason_phrase="OK",
+            message="OK",
             body=text,
         ).set_header("Content-Type", "text/plain")
     else:
-        response = HttpResponse(status_code=404, reason_phrase="NOT FOUND")
+        response = HttpResponse(status_code=404, message="NOT FOUND")
     print(f"Will response with {response}")
     client_socket.send(response.encode())
     client_socket.close()
@@ -126,7 +126,7 @@ def main():
         for thread in threads:
             thread.join()  # Wait for all client threads to finish
         print("Server has been gracefully shutdown.")
-        
+
 if __name__ == "__main__":
     main()
             
