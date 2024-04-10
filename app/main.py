@@ -21,7 +21,7 @@ class HttpResponse:
     status_code: int = 200
     message: str = "OK"
     headers: dict[str, str] = field(default_factory=dict)
-    body: str = ""
+    body: Union[str, bytes] = None
 
     def set_header(self, key: str, value: str):
         self.headers[key] = value
@@ -51,7 +51,7 @@ class HttpResponse:
         return response
 
 
-def handle_file_request(request: HttpRequest, dir: str) -> HttpResponse:
+def handle_get_file_request(request: HttpRequest, dir: str) -> HttpResponse:
     filename: str = request.path.split("/")[-1]
     file_path: str = os.path.join(dir, filename)
 
@@ -64,6 +64,16 @@ def handle_file_request(request: HttpRequest, dir: str) -> HttpResponse:
     return HttpResponse(status_code=200, message="OK", body=data).set_header(
         "Content-Type", "application/octet-stream"
     )
+
+def handle_post_file_request(request: HttpRequest, dir: str) -> HttpResponse:
+    filename: str = request.path.split("/", 2)[-1]
+    file_path: str = os.path.join(dir, filename)
+
+    with open(file_path, "wb") as file:
+        file.write(request.body.encode())
+
+    return HttpResponse(status_code=201,reason_phrase="Created",)
+
 
 
 def handle_client(
@@ -86,7 +96,7 @@ def handle_client(
                 break
             data: str = request_bytes.decode()
             buffer += data
-            log_str: str = buffer.replace("\\r\\n", "\\\\r\\\\n")
+            log_str: str = buffer.replace("\\r\\n", "\\\\r\\\\n").replace("\\0", "\\\\0")
             print(f"Buffer right now: {log_str}")
             if (
                 not headers_end and "\r\n\r\n" in buffer
@@ -132,8 +142,10 @@ def handle_client(
             message="OK",
             body=text,
         ).set_header("Content-Type", "text/plain")
-    elif request.path.startswith("/files"):
-        response = handle_file_request(request, directory)
+    elif request.path.startswith("/files") and request.method.lower() == "get":
+        response = handle_get_file_request(request, directory)
+    elif request.path.startswith("/files") and request.method.lower() == 'post':
+        response = handle_post_file_request(request, directory)      
     else:
         response = HttpResponse(status_code=404, message="Not found")
 
