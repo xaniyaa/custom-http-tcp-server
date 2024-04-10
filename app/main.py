@@ -94,15 +94,6 @@ def handle_client(client_socket: socket.socket, client_address: str, buffer_size
             break
     print(f"Received request: {request} ...")
 
-
-    # if request.headers["User-Agent"]:
-    #     user_agent = request.headers["User-Agent"]
-
-    #     response = HttpResponse(status_code=200,
-    #                            message="OK",
-    #                            body=user_agent)
-    # else:
-    #     response = HttpResponse(status_code=404, message="Not found")
     if "/" == request.path:
         response = HttpResponse(status_code=200, message="OK")
     elif request.path.startswith("/echo"):
