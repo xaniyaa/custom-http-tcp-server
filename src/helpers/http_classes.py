@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Union
 
 
 @dataclass
@@ -8,7 +7,7 @@ class HttpRequest:
     path: str = None
     version: str = None
     headers: dict[str, str] = field(default_factory=dict)
-    body: Union[str, bytes] = ""
+    body: str | bytes = ""
 
 
 @dataclass
@@ -17,15 +16,14 @@ class HttpResponse:
     status_code: int = 200
     message: str = "OK"
     headers: dict[str, str] = field(default_factory=dict)
-    body: Union[str, bytes] = None
+    body: str | bytes = None
 
     def set_header(self, key: str, value: str):
         self.headers[key] = value
         return self
 
     def encode(self) -> bytes:
-        """
-        Encodes the HttpResponse object into bytes suitable for sending over TCP.
+        """Encodes the HttpResponse object into bytes suitable for sending over TCP.
         """
         response_line: str = f"{self.version} {self.status_code} {self.message}\r\n"
         if isinstance(self.body, bytes):
