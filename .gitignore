@@ -1,0 +1,8 @@
+# Enviroments
+.venv
+
+#cache
+__pycache__/
+
+# Other files
+.gitattributes
