@@ -23,8 +23,7 @@ class HttpResponse:
         return self
 
     def encode(self) -> bytes:
-        """Encodes the HttpResponse object into bytes suitable for sending over TCP.
-        """
+        """Encodes the HttpResponse object into bytes suitable for sending over TCP."""
         response_line: str = f"{self.version} {self.status_code} {self.message}\r\n"
         if isinstance(self.body, bytes):
             bBody: bytes = self.body
